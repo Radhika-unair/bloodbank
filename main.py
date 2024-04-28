@@ -1,47 +1,54 @@
-import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QComboBox, QPushButton, QLabel
-from PyQt5.QtSql import QSqlDatabase, QSqlTableModel
+import mysql.connector
 
-class DBMSManager(QWidget):
+class BloodBankManagement:
     def __init__(self):
-        super().__init__()
+        self.conn = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            password="123",
+            database="bloodbank"
+        )
+        self.cursor = self.conn.cursor()
 
-        self.initUI()
+    def add_donor(self, name, blood_type, phone_number, city, state):
+        query = "INSERT INTO Donors (name, blood_type, phone_number, city, state) VALUES (%s, %s, %s, %s, %s)"
+        values = (name, blood_type, phone_number, city, state)
+        self.cursor.execute(query, values)
+        self.conn.commit()
 
-    def initUI(self):
-        self.db = QSqlDatabase.addDatabase('QSQLITE')
-        self.db.setDatabaseName('bloodbank.db')
+    def add_blood(self, blood_type, quantity):
+        query = "INSERT INTO BloodInventory (blood_type, quantity) VALUES (%s, %s) ON DUPLICATE KEY UPDATE quantity = quantity + %s"
+        values = (blood_type, quantity, quantity)
+        self.cursor.execute(query, values)
+        self.conn.commit()
 
-        if not self.db.open():
-            print("Error: Unable to connect to the database.")
-            sys.exit(1)
+    def search_donors(self, blood_type, city=None, state=None):
+        query = "SELECT * FROM Donors WHERE blood_type = %s"
+        params = [blood_type]
 
-        self.model = QSqlTableModel(self, self.db)
-        self.model.setTable('sqlite_master')
-        self.model.select()
+        if city:
+            query += " AND city = %s"
+            params.append(city)
+        if state:
+            query += " AND state = %s"
+            params.append(state)
 
-        self.combo = QComboBox(self)
-        self.combo.setModel(self.model)
-        self.combo.setModelColumn(self.model.fieldIndex('name'))
+        self.cursor.execute(query, tuple(params))
+        return self.cursor.fetchall()
 
-        self.btn = QPushButton('Show Tables', self)
-        self.btn.clicked.connect(self.show_tables)
+    def get_blood_inventory(self):
+        query = "SELECT * FROM BloodInventory"
+        self.cursor.execute(query)
+        return self.cursor.fetchall()
 
-        vbox = QVBoxLayout()
-        vbox.addWidget(self.combo)
-        vbox.addWidget(self.btn)
+    def close_connection(self):
+        self.cursor.close()
+        self.conn.close()
 
-        self.setLayout(vbox)
-
-        self.setWindowTitle('DBMS Manager')
-        self.setGeometry(300, 300, 300, 200)
-        self.show()
-
-    def show_tables(self):
-        table_name = self.combo.currentText()
-        print(f'Table Name: {table_name}')
-
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    ex = DBMSManager()
-    sys.exit(app.exec_())
+# Example usage
+blood_bank = BloodBankManagement()
+blood_bank.add_donor("John Doe", "O+", "1234567890", "New York", "NY")
+blood_bank.add_blood("O+", 10)
+print(blood_bank.search_donors("O+"))
+print(blood_bank.get_blood_inventory())
+blood_bank.close_connection()
