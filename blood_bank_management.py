@@ -44,11 +44,3 @@ class BloodBankManagement:
     def close_connection(self):
         self.cursor.close()
         self.conn.close()
-
-# Example usage
-blood_bank = BloodBankManagement()
-blood_bank.add_donor("John Doe", "O+", "1234567890", "New York", "NY")
-blood_bank.add_blood("O+", 10)
-print(blood_bank.search_donors("O+"))
-print(blood_bank.get_blood_inventory())
-blood_bank.close_connection()
